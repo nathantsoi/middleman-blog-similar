@@ -13,7 +13,6 @@ module Middleman
 
       def after_configuration
         require 'middleman-blog/blog_article'
-        ::Middleman::Sitemap::Resource.send :include, Middleman::Blog::Similar::BlogArticleExtensions
         algorithm = options[:algorithm].to_s
         begin
           require "middleman-blog-similar/algorithm/#{algorithm}"
@@ -22,11 +21,12 @@ module Middleman
             ns = ns.const_get n.camelize
           end
           ns.cache = options[:cache]
-          app.set :similarity_algorithm, ns
+          @app.config[:similarity_algorithm] = ns
         rescue LoadError => e
-          app.logger.error "Requested similar algorithm '#{algorithm}' not found."
+          @app.logger.error "Requested similar algorithm '#{algorithm}' not found."
           raise e
         end
+        ::Middleman::Sitemap::Resource.send :include, Middleman::Blog::Similar::BlogArticleExtensions
       end
 
     end

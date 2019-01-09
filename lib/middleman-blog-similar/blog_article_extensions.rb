@@ -12,7 +12,7 @@ module Middleman::Blog::Similar::BlogArticleExtensions
     @words
   end
   def similarity_algorithm
-    if !@similarity_algorithm && (algorithm = app.similarity_algorithm)
+    if !@similarity_algorithm && (algorithm = @app.config[:similarity_algorithm])
       @similarity_algorithm = algorithm.new self
     end
     @similarity_algorithm
