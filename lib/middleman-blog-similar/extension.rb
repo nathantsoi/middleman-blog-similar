@@ -13,6 +13,7 @@ module Middleman
 
       def after_configuration
         require 'middleman-blog/blog_article'
+        @app.config[:content_css_selector] = options[:content_css_selector].try(:to_s) || 'article'
         algorithm = options[:algorithm].to_s
         begin
           require "middleman-blog-similar/algorithm/#{algorithm}"

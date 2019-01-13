@@ -59,6 +59,8 @@ activate :similar, :algorithm => :levenshtein
 activate :similar, :algorithm => :damerau_levenshtein
 ```
 
+the `content_css_selector` can also be set, if the wrapper on your articles is not the default `article` tag
+
 This library supports [levenshtein-ffi], [levenshtein] and [damerau-levenshtein].
 
 #### caching

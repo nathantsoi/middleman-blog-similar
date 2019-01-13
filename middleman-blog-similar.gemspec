@@ -15,8 +15,9 @@ Gem::Specification.new do |s|
   s.files = `git ls-files -z`.split("\0")
   s.test_files = `git ls-files -z -- {fixtures,features,spec}/*`.split("\0")
   s.require_paths = ["lib"]
-  s.add_runtime_dependency("sqlite3", ["~> 1.3"  ])
-  s.add_runtime_dependency("middleman-core", ["~> 4.0"  ])
-  s.add_runtime_dependency("middleman-blog", ["~> 4.0"  ])
+  s.add_runtime_dependency("sqlite3", ["~> 1.3"])
+  s.add_runtime_dependency("middleman-core", ["~> 4.0"])
+  s.add_runtime_dependency("middleman-blog", ["~> 4.0"])
+  s.add_runtime_dependency("nokogiri", ["~> 1.10"])
   s.add_runtime_dependency("fast-stemmer",   ["~> 1.0.2"])
 end

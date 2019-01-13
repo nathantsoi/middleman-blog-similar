@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
-gem 'middleman-core', '~> 3.2'
-gem 'middleman-blog', '~> 3.5'
+gem 'middleman-core', '~> 4.0'
+gem 'middleman-blog', '~> 4.0'
 
 # Specify your gem's dependencies in middleman-blog-similar.gemspec
 gemspec
@@ -19,9 +19,10 @@ gem 'guard-rake'
 gem 'guard-cucumber'
 gem 'guard-rspec'
 gem 'guard-spork'
+gem 'nokogiri', '~> 1.10'
 gem 'slim'
 gem 'redcarpet'
-gem 'sqlite3'
+gem 'sqlite3', '~> 1.3'
 
 # Code Quality
 gem 'cane', :platforms => [:mri_19, :mri_20], :require => false

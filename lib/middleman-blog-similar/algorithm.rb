@@ -4,9 +4,10 @@ require 'digest'
 class Middleman::Blog::Similar::Algorithm
   @@db_name = "middleman-blog-similar"
   @@should_cache = false
-  attr_reader :article, :app
-  def initialize(article)
+  attr_reader :article, :css_selector, :app
+  def initialize(article, css_selector)
     @article = article
+    @css_selector = css_selector
   end
   def self.cache= should_cache
     puts "enabled middleman-blog-similar caching: #{should_cache}"
@@ -30,30 +31,60 @@ class Middleman::Blog::Similar::Algorithm
   def self._find key
     _db.execute("SELECT * FROM cache WHERE id = ?", key).tap do |res|
       unless res && res.length > 0
-        puts "cache miss: _find #{key}: #{res}"
         return nil
       end
     end.first.last.to_i
   end
   def self._set key, val
-    #puts "_set #{key}, #{val}"
-    _db.execute "DELETE FROM cache WHERE id = ?", key
-    _db.execute "INSERT INTO cache (id, val) VALUES (?,?)", key, val
+    puts "_set #{key}, #{val}"
+    begin
+      retried ||= false
+      _db.execute <<-SQL
+        BEGIN TRANSACTION;
+        DELETE FROM cache WHERE id = ?", key;
+        INSERT INTO cache (id, val) VALUES (?,?)", key, val;
+        END;
+      SQL
+    rescue Exception => e
+      if !retried && e.message =~ /transaction/
+        _db.execute "COMMIT;"
+        retried = true
+        retry
+      else
+        raise e
+      end
+    end
+  end
+  def article_text article
+    if (res = Nokogiri::XML(article.body).at_css(css_selector).try(:inner_text)).blank?
+      res = Nokogiri::XML("<article>#{article.body}</article>").at_css(css_selector).try(:inner_text)
+    end
+    if res.blank?
+      raise "#{article.title} has no content"
+    end
+    res
+  end
+  def article_hash article
+    return Digest::SHA256.hexdigest(article_text(article))[0..16]
   end
   def similar_articles
     @similar_articles ||= articles
       .reject{|a| a.url == article.url || a.data.published == false}
-      .map do |a|
+      .map do |article_b|
+        article_a, article_b = [@article, article_b].sort_by{|a| article_hash(a)}
         # key is the hash of this article and the compared article
-        key = Digest::SHA256.hexdigest [article.title, article.body, a.title, a.body].join(',')
+        key = [article_hash(article_a), article_hash(article_b)].join('-')
         dist = self.class._find(key)
+        if not dist
+          puts "cache miss #{article_a.title} - #{article_b.title}"
+        end
         if @@should_cache && !dist
-          dist = distance(a)
+          dist = distance(article_text(article_a), article_text(article_b))
           self.class._set(key, dist)
         end
         #puts "dist: #{dist}"
-        dist ||= self.class._find(key) || distance(a)
-        [dist, a]
+        #dist ||= self.class._find(key) || distance(a)
+        [dist, article_b]
       end.sort{|x, y| x[0] <=> y[0]  }
       .map{|a| a[1] }
   end
