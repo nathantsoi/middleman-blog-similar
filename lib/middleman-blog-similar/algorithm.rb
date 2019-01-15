@@ -3,6 +3,7 @@ require 'digest'
 
 class Middleman::Blog::Similar::Algorithm
   @@db_name = "middleman-blog-similar"
+  @@semaphore = Mutex.new
   @@should_cache = false
   attr_reader :article, :css_selector, :app
   def initialize(article, css_selector)
@@ -29,31 +30,21 @@ class Middleman::Blog::Similar::Algorithm
     end
   end
   def self._find key
-    _db.execute("SELECT * FROM cache WHERE id = ?", key).tap do |res|
-      unless res && res.length > 0
-        return nil
-      end
-    end.first.last.to_i
+    @@semaphore.synchronize {
+      _db.execute("SELECT * FROM cache WHERE id = ?", key).tap do |res|
+        unless res && res.length > 0
+          return nil
+        end
+      end.first.last.to_i
+    }
   end
   def self._set key, val
-    puts "_set #{key}, #{val}"
-    begin
-      retried ||= false
-      _db.execute <<-SQL
-        BEGIN TRANSACTION;
-        DELETE FROM cache WHERE id = ?", key;
-        INSERT INTO cache (id, val) VALUES (?,?)", key, val;
-        END;
-      SQL
-    rescue Exception => e
-      if !retried && e.message =~ /transaction/
-        _db.execute "COMMIT;"
-        retried = true
-        retry
-      else
-        raise e
-      end
-    end
+    @@semaphore.synchronize {
+      _db.execute("BEGIN TRANSACTION")
+      _db.execute("DELETE FROM cache WHERE id = ?", key)
+      _db.execute("INSERT INTO cache (id, val) VALUES (?,?)", key, val)
+      _db.execute("END")
+    }
   end
   def article_text article
     if (res = Nokogiri::XML(article.body).at_css(css_selector).try(:inner_text)).blank?
@@ -75,11 +66,9 @@ class Middleman::Blog::Similar::Algorithm
         # key is the hash of this article and the compared article
         key = [article_hash(article_a), article_hash(article_b)].join('-')
         dist = self.class._find(key)
-        if not dist
-          puts "cache miss #{article_a.title} - #{article_b.title}"
-        end
         if @@should_cache && !dist
           dist = distance(article_text(article_a), article_text(article_b))
+          puts "Blog Similar cache miss (updated distance: #{dist}):\n    - #{article_a.title}\n    - #{article_b.title}"
           self.class._set(key, dist)
         end
         #puts "dist: #{dist}"
